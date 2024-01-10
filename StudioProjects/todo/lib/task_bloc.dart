@@ -1,6 +1,7 @@
 import 'package:bloc/bloc.dart';
-import 'package:meta/meta.dart';
+import 'package:get_it/get_it.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'repo/task_repo.dart';
 
 // События
 abstract class TaskEvent {}
@@ -27,7 +28,11 @@ class DeleteTaskEvent extends TaskEvent {
 // Состояния
 abstract class TaskState {}
 
-class InitialTaskState extends TaskState {}
+class InitialTaskState extends TaskState {
+  final List<String> tasks;
+
+  InitialTaskState(this.tasks);
+}
 
 class UpdatedTaskState extends TaskState {
   final List<String> tasks;
@@ -38,7 +43,8 @@ class UpdatedTaskState extends TaskState {
 class TaskBloc extends Bloc<TaskEvent, TaskState> {
   List<String> tasks = [];
 
-  TaskBloc() : super(InitialTaskState()) {
+  TaskBloc() : super(InitialTaskState([])) {
+    _initializeTasks();
     on<AddTaskEvent>(_mapAddTaskToState);
     on<EditTaskEvent>(_mapEditTaskToState);
     on<DeleteTaskEvent>(_mapDeleteTaskToState);
@@ -57,5 +63,15 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   void _mapDeleteTaskToState(DeleteTaskEvent event, Emitter<TaskState> emit) {
     tasks.removeAt(event.index);
     emit(UpdatedTaskState(List.from(tasks)));
+  }
+
+  Future<void> _initializeTasks() async {
+    try {
+      var fetchTasks = await GetIt.I<TaskRepository>().fetchTasks();
+      emit(InitialTaskState(List.from(fetchTasks.take(5))));
+      tasks = List.from(fetchTasks.take(5));
+    } catch (e) {
+      print('Ошибка при получении данных: $e');
+    }
   }
 }

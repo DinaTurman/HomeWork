@@ -1,0 +1,9 @@
+{
+  "taskName": "Task Name",
+  "task": "Task",
+  "enterText": "Please enter some text",
+  "add": "Add",
+  "selectLanguage": "Select Language",
+  "english": "English",
+  "russian": "Russian"
+}

@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:todo/localization_bloc.dart';
+import 'package:todo/repo/task_repo.dart';
+import 'generated/l10n.dart';
 import 'task_bloc.dart';
-import 'i18n/app_localizations.dart';
-import 'localization_bloc.dart';
+import 'text_form.dart';
 
 
 class HomeScreen extends StatelessWidget {
   final TextEditingController _controller = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
   int _editingIndex = -1;
-  String _buttonText = 'Add Task';
-
+  
   @override
   Widget build(BuildContext context) {
-    final LocalizationBloc localizationBloc = BlocProvider.of<LocalizationBloc>(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text('Tasks'),
+        title: Text(S.of(context).task),
         actions: [
           IconButton(
             icon: Icon(Icons.language),
@@ -30,39 +31,79 @@ class HomeScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            TextField(
-              controller: _controller,
-              decoration: InputDecoration(labelText: 'Task Name'),
-            ),
-            SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                if (_editingIndex == -1) {
-                  BlocProvider.of<TaskBloc>(context).add(AddTaskEvent(_controller.text));
-                } else {
-                  BlocProvider.of<TaskBloc>(context).add(EditTaskEvent(_editingIndex, _controller.text));
-                  _editingIndex = -1;
-                  _buttonText = 'Add Task';
+            BlocBuilder<TaskBloc, TaskState>(
+              builder: (context, state) {
+                if (state is UpdatedTaskState) {
+                  print(state.tasks);
+                  return buildTaskForm(state.tasks, context);
                 }
-                _controller.clear();
+                if (state is InitialTaskState) {
+                  print(state.tasks);
+                  return buildTaskForm(state.tasks, context);
+                }
+                return Text('data');
               },
-              child: Text(_buttonText),
             ),
             SizedBox(height: 16),
             Expanded(
               child: BlocBuilder<TaskBloc, TaskState>(
                 builder: (context, state) {
                   if (state is UpdatedTaskState) {
+                    print(state.tasks);
                     return buildTaskList(state.tasks, context);
                   }
-
-                  return Text('Your tasks will be displayed here.');
+                  if (state is InitialTaskState) {
+                    print(state.tasks);
+                    return buildTaskList(state.tasks, context);
+                  }
+                  return Text('Wait');
                 },
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget buildTaskForm(List<String> tasks, BuildContext context) {
+    return BlocBuilder<TaskBloc, TaskState>(
+      builder: (context, state) {
+        return Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextFormField(
+                controller: _controller,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return S.of(context).enterText;
+                  }
+                  return null;
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (_formKey.currentState!.validate()) {
+                      if (_editingIndex == -1) {
+                        BlocProvider.of<TaskBloc>(context).add(AddTaskEvent(_controller.text));
+                      } else {
+                        _editingIndex = -1;
+                        BlocProvider.of<TaskBloc>(context).add(EditTaskEvent(_editingIndex, _controller.text));
+                      }
+                      _controller.clear();
+                      };
+                    },
+                  child: Text(S.of(context).add),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -78,7 +119,6 @@ class HomeScreen extends StatelessWidget {
                   onTap: () {
                     _controller.text = tasks[index];
                     _editingIndex = index;
-                    _buttonText = 'Save';
                   },
                   child: TextField(
                     enabled: false,
@@ -87,11 +127,10 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               IconButton(
-                icon: Icon(Icons.edit),
+                icon: const Icon(Icons.edit),
                 onPressed: () {
                   _controller.text = tasks[index];
                   _editingIndex = index;
-                  _buttonText = 'Save';
                 },
               ),
             ],
@@ -110,28 +149,31 @@ class HomeScreen extends StatelessWidget {
   void _showLanguageDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Select Language'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ElevatedButton(
-              onPressed: () {
-                BlocProvider.of<LocalizationBloc>(context).add(ChangeLocaleEvent('en_US'));;
-                Navigator.of(context).pop();
-              },
-              child: Text('English'),
+      builder: (context) =>
+          AlertDialog(
+            title: Text(S.of(context).selectLanguage),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ElevatedButton(
+                  onPressed: () {
+                    BlocProvider.of<LocalizationBloc>(context).add(
+                        ChangeLocaleEvent('en_US'));
+                    Navigator.of(context).pop();
+                  },
+                  child: Text(S.of(context).english),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    BlocProvider.of<LocalizationBloc>(context).add(
+                        ChangeLocaleEvent('ru'));
+                    Navigator.of(context).pop();
+                  },
+                  child: Text(S.of(context).russian),
+                ),
+              ],
             ),
-            ElevatedButton(
-              onPressed: () {
-                BlocProvider.of<LocalizationBloc>(context).add(ChangeLocaleEvent('ru_RU'));;
-                Navigator.of(context).pop();
-              },
-              child: Text('Русский'),
-            ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 }
